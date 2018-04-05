@@ -1,0 +1,47 @@
+---
+title: "Titanic"
+author: "Jonathan Marin"
+date: "April 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# R Markdown
+
+```{r}
+
+library(ggplot2)
+library(sqldf)
+
+setwd("C:/Users/Marin Family/Desktop/Kaggle/Titanic")
+
+train <- read.csv("train.csv")
+
+
+Survived <- sqldf("select * from train where survived = '1'")
+Died <- sqldf("select * from train where survived = '0'")
+
+quantile(Survived$Age, probs = seq(0,1, by = .1), na.rm = TRUE)
+
+ggplot(train, aes(x=Age)) +
+    geom_histogram(binwidth=5, alpha=.5, position="identity")
+
+
+
+ggplot(Died, aes(x=Age)) +
+    geom_histogram(binwidth=5, alpha=.5, position="identity")
+
+
+ggplot(Survived, aes(x=Age)) +
+    geom_histogram(binwidth=5, alpha=.5, position="identity")
+
+
+
+
+
+
+```
+
