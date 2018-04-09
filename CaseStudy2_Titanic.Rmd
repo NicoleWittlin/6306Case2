@@ -34,6 +34,7 @@ library(sqldf)
 library(reshape2)
 library(magrittr)
 library(kableExtra)
+library(doBy)
 
 
 variables <- read.xlsx("Variables.xlsx", "Sheet1")
@@ -63,6 +64,8 @@ Parent = mother, father
 Child = daughter, son, stepdaughter, stepson
 Some children travelled only with a nanny, therefore parch=0 for them.
 
+#Import the Data
+
 ```{r echo = TRUE, include = FALSE}
 
 
@@ -72,13 +75,47 @@ Some children travelled only with a nanny, therefore parch=0 for them.
 
 train <- read.csv("train.csv")
 
+#Adding a column to train to indicate that it is the train set
+
+train$Set <- "train"
+
 test <- read.csv("test.csv")
+
+test$Set <- "test"
+
 
 
 ```
 
 
+#Clean the Data
 
+```{r}
+#We want to add the Survived variable to the test set so that we can combine training and test 
+
+test$Survived <- NA
+
+
+#Combining the train and test set so that we can clean the data for both sets 
+combined <- rbind(train,test)
+
+#Testing to see what class these features are
+
+class(combined$PassengerId)
+class(combined$Survived)
+class(combined$Pclass)
+class(combined$Name)
+class(combined$Sex)
+class(combined$Age)
+class(combined$SibSp)
+class(combined$Parch)
+class(combined$Ticket)
+class(combined$Fare)
+class(combined$Embarked)
+
+#I don't see any issues with the classes for the features
+
+```
 
 #Missing Variable Values
 
@@ -86,9 +123,91 @@ We need to see what values are missing and what to do with them.  With little da
 
 ```{r}
 
+sapply(combined, function(x) sum(is.na(x)))
+
+#The 418 surived variables make sense because we have the test set here.  However, the age is missing quite abit.  Probably need to come up with a way to fill in the age. 
+
+
+
 
 ```
 
+#Feature Engineering
+
+```{r}
+
+#Want to create a variable by title.  This might help predict age. 
+
+combined$Title <- gsub( "^.*, ", '' , combined$Name)
+combined$Title <- gsub(" .*" , '', combined$Title)
+
+
+```
+
+#Imputing Age
+
+There are many ways to impute age and this is obviously an important variable to the model for two possible reasons:
+
+1) We know that Women and Children were allowed on life boats first
+2) Age is a factor in determing a person's health once on a boat which is crucial for survival. 
+
+That being said, would it make sense to group age into smaller categories because being 22 vs being 23 might not be significant.  However, being an infant vs toddler vs teenager vs senior citizen might be. 
+
+First, let's make a new variable for age to categorize.
+
+
+```{r}
+
+
+FilledAges <- sqldf("SELECT * FROM combined where Age is not null")
+
+MissingAgesTitle <- sqldf("SELECT Title, count(*) as 'Count' FROM combined where Age is null group by Title")
+
+MissingAgesTitle
+
+summaryBy(Age ~ Title, data = FilledAges, FUN =  list(mean, max,min, median, sd))
+
+#Imputed Age: Using the medians of Age per title
+
+combined <- sqldf("select a.*,  case 
+  when Age is null and Title = 'Capt.' then 70 
+  when Age is null and Title = 'Col.' then 54 
+  when Age is null and Title = 'Don.' then 40 
+  when Age is null and Title = 'Dona.' then 39 
+  when Age is null and Title = 'Dr.' then 49 
+  when Age is null and Title = 'Lady' then 48
+  when Age is null and Title = 'Major.' then 48
+  when Age is null and Title = 'Master.' then 4
+  when Age is null and Title = 'Miss.' then 22
+  when Age is null and Title = 'Mlle.' then 24
+  when Age is null and Title = 'Mme.' then 24
+  when Age is null and Title = 'Mr.' then 29
+  when Age is null and Title = 'Mrs.' then 40
+  when Age is null and Title = 'Ms.' then 28
+  when Age is null and Title = 'Rev.' then 42
+  when Age is null and Title = 'Sir.' then 49
+  else Age end as 'ImputedAge' from combined a")
+
+#Check to make sure all ages were imputed
+sapply(combined, function(x) sum(is.na(x)))
+
+
+```
+
+
+#Creating Age Classes
+
+
+
+```{r}
+
+combined <- sqldf("SELECT a.*, CASE WHEN ImputedAge is Null then NULL when ImputedAge <= 2 then 'Infant' when ImputedAge <= 5 then 'Toddler' when ImputedAge <= 12 then 'Child' when ImputedAge <= 18 then 'Teen' when ImputedAge <= 30 then 'Adult' when ImputedAge <= 40 then 'OlderAdult' when ImputedAge <= 65 then 'OvertheHill' else 'Senior' end as 'AgeClass' from combined a")
+
+#Check to make sure that I categorized all passengers
+sapply(combined, function(x) sum(is.na(x)))
+
+
+```
 
 #Execution Plan
 
