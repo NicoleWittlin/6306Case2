@@ -9,31 +9,102 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+#Kaggle Titanic Competition
+
+https://www.kaggle.com/c/titanic/data
+
+
 # Introduction
 
 
-# Data
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
 
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
 
+In this challenge, we ask you to complete the analysis of what sorts of people were likely to survive. In particular, we ask you to apply the tools of machine learning to predict which passengers survived the tragedy.
 
-```{r}
+# Data Dictionary
 
+```{r echo = TRUE, include = TRUE, warning = FALSE}
+
+library(xlsx)
+library(knitr)
 library(ggplot2)
 library(sqldf)
 library(reshape2)
+library(magrittr)
+library(kableExtra)
 
-setwd("C:/Users/i64756/Desktop/Kaggle/Titanic")
+
+variables <- read.xlsx("Variables.xlsx", "Sheet1")
+
+
+kable((variables), "html") %>% kable_styling(bootstrap_options="striped", full_width = F, font_size = 12)
+
+
+```
+
+#Variable Notes
+
+Variable Notes
+pclass: A proxy for socio-economic status (SES)
+1st = Upper
+2nd = Middle
+3rd = Lower
+
+age: Age is fractional if less than 1. If the age is estimated, is it in the form of xx.5
+
+sibsp: The dataset defines family relations in this way...
+Sibling = brother, sister, stepbrother, stepsister
+Spouse = husband, wife (mistresses and fiancés were ignored)
+
+parch: The dataset defines family relations in this way...
+Parent = mother, father
+Child = daughter, son, stepdaughter, stepson
+Some children travelled only with a nanny, therefore parch=0 for them.
+
+```{r echo = TRUE, include = FALSE}
+
+
+
+##setwd("C:/Users/i64756/Desktop/Kaggle/Titanic")
 
 
 train <- read.csv("train.csv")
 
+test <- read.csv("test.csv")
+
+
 ```
 
 
-# Women and Children First
 
+
+#Missing Variable Values
+
+We need to see what values are missing and what to do with them.  With little data, we shouldn't exclude if we can.  Possibly we can impute them. 
 
 ```{r}
+
+
+```
+
+
+#Execution Plan
+
+Maybe we can discuss what we wanted to look at first and then later further down discuss what others did.  Think it would be a good idea to have a very basic model of Age, Gender, and Pclass only and see how well it does maybe.  
+
+
+
+
+#Exploratory Analysis
+
+## Women and Children First
+
+WE SHOULD BREAK UP THESE PLOTS AND SAY SOMETHING AFTER EACH ONE. 
+
+
+```{r echo = TRUE, include = FALSE}
 
 ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
     geom_histogram(binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
@@ -51,6 +122,20 @@ ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
     geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
 
 
+ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
+    geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none") 
+
+  
+
+ 
+ 
+ l <- ggplot(train, aes(Age, Sex), na.rm = TRUE) 
+l + geom_raster(aes(fill= Survived), na.rm = TRUE)
+ 
+
+
+
+#Read more at: https://www.tatvic.com/blog/7-visualizations-learn-r/?utm_source=copytext&utm_medium=text&utm_campaig#n=textshare
 
 
 ```
