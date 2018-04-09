@@ -21,7 +21,7 @@ The sinking of the RMS Titanic is one of the most infamous shipwrecks in history
 
 One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
 
-In this challenge, we ask you to complete the analysis of what sorts of people were likely to survive. In particular, we ask you to apply the tools of machine learning to predict which passengers survived the tragedy.
+In this kaggle challenge, we must complete the analysis of what sorts of people were likely to survive. In particular, we need to apply the tools of machine learning to predict which passengers survived the tragedy.
 
 # Data Dictionary
 
@@ -35,6 +35,9 @@ library(reshape2)
 library(magrittr)
 library(kableExtra)
 library(doBy)
+library(caret)
+library(parallel)
+library(doParallel)
 
 
 variables <- read.xlsx("Variables.xlsx", "Sheet1")
@@ -209,6 +212,10 @@ sapply(combined, function(x) sum(is.na(x)))
 
 ```
 
+#Combine Rare Titles
+
+
+
 #Execution Plan
 
 Maybe we can discuss what we wanted to look at first and then later further down discuss what others did.  Think it would be a good idea to have a very basic model of Age, Gender, and Pclass only and see how well it does maybe.  
@@ -254,14 +261,59 @@ l + geom_raster(aes(fill= Survived), na.rm = TRUE)
 
 
 
-#Read more at: https://www.tatvic.com/blog/7-visualizations-learn-r/?utm_source=copytext&utm_medium=text&utm_campaig#n=textshare
+```
+
+
+#Seperate Train and Test for Variables we want
+
+```{r}
+
+train2 <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass, Survived 
+                from combined a 
+                Where [Set] = 'train'")
+
+test2 <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass 
+                from combined a 
+                Where [Set] = 'test'")
 
 
 ```
 
+#Model
+
+```{r}
+
+#Adding more cores to R/model for faster processing and leaving 1 for OS
+cluster <- makeCluster(detectCores() - 1) 
+registerDoParallel(cluster)
 
 
+
+fitControl <- trainControl(method = "cv",
+                           number = 2,
+                           allowParallel = TRUE)
+
+
+
+#Random Forest
+modelfit <- train(Survived ~., data = train2, method = "rf", trControl = fitControl)
+
+modelfit$finalModel
+
+#Gradient Boosting Machine)
+
+modFit <- train(Survived ~., method = "gbm", data=train2, verbose = FALSE)
+
+modFit
+
+
+#Getting Errors in the prediction of test because of values that exist in test, but not in train
+# Dona. value doesn't exist in train.  Need to combine some titles in data prep
+
+
+pred <- predict(modelfit, newdata = test2)
+
+pred
 
 
 ```
-
