@@ -27,7 +27,7 @@ In this kaggle challenge, we must complete the analysis of what sorts of people 
 
 ```{r echo = TRUE, include = TRUE, warning = FALSE}
 
-library(xlsx)
+#library(xlsx)
 library(knitr)
 library(ggplot2)
 library(sqldf)
@@ -38,9 +38,10 @@ library(doBy)
 library(caret)
 library(parallel)
 library(doParallel)
+library(randomForest)
 
-
-variables <- read.xlsx("Variables.xlsx", "Sheet1")
+#variables <- read.xlsx("Variables.xlsx", "Sheet1")
+variables <- read.csv("Variables.csv", sep=",")
 
 
 kable((variables), "html") %>% kable_styling(bootstrap_options="striped", full_width = F, font_size = 12)
@@ -86,6 +87,9 @@ test <- read.csv("test.csv")
 
 test$Set <- "test"
 
+# age added for data with blanks from encylopedia-titanica.
+train_age <- read.csv("trainage.csv", sep=",") 
+train_age$Set <- "train"
 
 
 ```
@@ -101,6 +105,8 @@ test$Survived <- NA
 
 #Combining the train and test set so that we can clean the data for both sets 
 combined <- rbind(train,test)
+
+combinedv2 <- rbind(train_age,test)
 
 #Testing to see what class these features are
 
@@ -130,6 +136,7 @@ sapply(combined, function(x) sum(is.na(x)))
 
 #The 418 surived variables make sense because we have the test set here.  However, the age is missing quite abit.  Probably need to come up with a way to fill in the age. 
 
+sapply(combinedv2, function(x) sum(is.na(x)))
 
 
 
@@ -230,7 +237,7 @@ Maybe we can discuss what we wanted to look at first and then later further down
 WE SHOULD BREAK UP THESE PLOTS AND SAY SOMETHING AFTER EACH ONE. 
 
 
-```{r echo = TRUE, include = FALSE}
+```{r echo = TRUE, include = TRUE}
 
 ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
     geom_histogram(binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
@@ -284,36 +291,36 @@ test2 <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass
 ```{r}
 
 #Adding more cores to R/model for faster processing and leaving 1 for OS
-cluster <- makeCluster(detectCores() - 1) 
-registerDoParallel(cluster)
+#cluster <- makeCluster(detectCores() - 1) 
+#registerDoParallel(cluster)
 
 
 
-fitControl <- trainControl(method = "cv",
-                           number = 2,
-                           allowParallel = TRUE)
+#fitControl <- trainControl(method = "cv",
+#                           number = 2,
+#                           allowParallel = TRUE)
 
 
 
 #Random Forest
-modelfit <- train(Survived ~., data = train2, method = "rf", trControl = fitControl)
+#modelfit <- train(Survived ~., data = train2, method = "rf", trControl = fitControl)
 
-modelfit$finalModel
+#modelfit$finalModel
 
 #Gradient Boosting Machine)
 
-modFit <- train(Survived ~., method = "gbm", data=train2, verbose = FALSE)
+#modFit <- train(Survived ~., method = "gbm", data=train2, verbose = FALSE)
 
-modFit
+#modFit
 
 
 #Getting Errors in the prediction of test because of values that exist in test, but not in train
 # Dona. value doesn't exist in train.  Need to combine some titles in data prep
 
 
-pred <- predict(modelfit, newdata = test2)
+#pred <- predict(modelfit, newdata = test2)
 
-pred
+#pred
 
 
 ```
