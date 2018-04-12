@@ -87,10 +87,15 @@ test <- read.csv("test.csv")
 
 test$Set <- "test"
 
+#We have two train and test sets.  One to try imputaing age, and the other to get it from the web. 
+#We would like to see the difference. 
+
 # age added for data with blanks from encylopedia-titanica.
 train_age <- read.csv("trainage.csv", sep=",") 
 train_age$Set <- "train"
 
+test_age <- read.csv("testage.csv", sep = ",")
+test_age$Set <- "test"
 
 ```
 
@@ -102,11 +107,13 @@ train_age$Set <- "train"
 
 test$Survived <- NA
 
+test_age$Survived <- NA
+
 
 #Combining the train and test set so that we can clean the data for both sets 
 combined <- rbind(train,test)
 
-combinedv2 <- rbind(train_age,test)
+combined_age <- rbind(train_age,test_age)
 
 #Testing to see what class these features are
 
@@ -134,9 +141,12 @@ We need to see what values are missing and what to do with them.  With little da
 
 sapply(combined, function(x) sum(is.na(x)))
 
-#The 418 surived variables make sense because we have the test set here.  However, the age is missing quite abit.  Probably need to come up with a way to fill in the age. 
+#The 418 surived variables make sense because we have the test set here.  However, the age is missing quite a bit.  Probably need to come up with a way to fill in the age by imputing. 
 
-sapply(combinedv2, function(x) sum(is.na(x)))
+
+
+# Found a source that had ages 
+sapply(combined_age, function(x) sum(is.na(x)))
 
 
 
@@ -150,6 +160,9 @@ sapply(combinedv2, function(x) sum(is.na(x)))
 
 combined$Title <- gsub( "^.*, ", '' , combined$Name)
 combined$Title <- gsub(" .*" , '', combined$Title)
+
+combined_age$Title <- gsub( "^.*, ", '' , combined$Name)
+combined_age$Title <- gsub(" .*" , '', combined$Title)
 
 
 ```
@@ -198,8 +211,30 @@ combined <- sqldf("select a.*,  case
   when Age is null and Title = 'Sir.' then 49
   else Age end as 'ImputedAge' from combined a")
 
+
+combined_age <- sqldf("select a.*,  case 
+  when Age is null and Title = 'Capt.' then 70 
+  when Age is null and Title = 'Col.' then 54 
+  when Age is null and Title = 'Don.' then 40 
+  when Age is null and Title = 'Dona.' then 39 
+  when Age is null and Title = 'Dr.' then 49 
+  when Age is null and Title = 'Lady' then 48
+  when Age is null and Title = 'Major.' then 48
+  when Age is null and Title = 'Master.' then 4
+  when Age is null and Title = 'Miss.' then 22
+  when Age is null and Title = 'Mlle.' then 24
+  when Age is null and Title = 'Mme.' then 24
+  when Age is null and Title = 'Mr.' then 29
+  when Age is null and Title = 'Mrs.' then 40
+  when Age is null and Title = 'Ms.' then 28
+  when Age is null and Title = 'Rev.' then 42
+  when Age is null and Title = 'Sir.' then 49
+  else Age end as 'ImputedAge' from combined_age a")
+
 #Check to make sure all ages were imputed
 sapply(combined, function(x) sum(is.na(x)))
+
+sapply(combined_age, function(x) sum(is.na(x)))
 
 
 ```
@@ -209,9 +244,12 @@ sapply(combined, function(x) sum(is.na(x)))
 
 
 
-```{r}
+```{r warning = FALSE}
 
 combined <- sqldf("SELECT a.*, CASE WHEN ImputedAge is Null then NULL when ImputedAge <= 2 then 'Infant' when ImputedAge <= 5 then 'Toddler' when ImputedAge <= 12 then 'Child' when ImputedAge <= 18 then 'Teen' when ImputedAge <= 30 then 'Adult' when ImputedAge <= 40 then 'OlderAdult' when ImputedAge <= 65 then 'OvertheHill' else 'Senior' end as 'AgeClass' from combined a")
+
+combined_age <- sqldf("SELECT a.*, CASE WHEN ImputedAge is Null then NULL when ImputedAge <= 2 then 'Infant' when ImputedAge <= 5 then 'Toddler' when ImputedAge <= 12 then 'Child' when ImputedAge <= 18 then 'Teen' when ImputedAge <= 30 then 'Adult' when ImputedAge <= 40 then 'OlderAdult' when ImputedAge <= 65 then 'OvertheHill' else 'Senior' end as 'AgeClass' from combined_age a")
+
 
 #Check to make sure that I categorized all passengers
 sapply(combined, function(x) sum(is.na(x)))
@@ -221,6 +259,47 @@ sapply(combined, function(x) sum(is.na(x)))
 
 #Combine Rare Titles
 
+After running a model with the titles created as is, there was an issue where the test set had a title that the train set did not. Will need to combine the rare titles. 
+
+```{r warning = FALSE}
+
+sqldf("Select Title, Count(Title) as 'Count' from combined group by Title order by count(Title)")
+
+#All the rarer titles seem to be of rank or nobility, will combine these
+
+
+
+combined <- sqldf(c("update combined set Title = 'Nobility' where Title in 
+('Capt.',
+'Col.',
+'Don.',
+'Dona.',
+'Jonkheer.',
+'Lady.',
+'Major.',
+'Mlle.',
+'Mme.',
+'Ms.',
+'Sir.',
+'the')","select * from combined"))
+
+combined_age <- sqldf(c("update combined set Title = 'Nobility' where Title in 
+('Capt.',
+'Col.',
+'Don.',
+'Dona.',
+'Jonkheer.',
+'Lady.',
+'Major.',
+'Mlle.',
+'Mme.',
+'Ms.',
+'Sir.',
+'the')","select * from combined_age"))
+
+
+
+```
 
 
 #Execution Plan
@@ -261,10 +340,7 @@ ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
   
 
  
- 
- l <- ggplot(train, aes(Age, Sex), na.rm = TRUE) 
-l + geom_raster(aes(fill= Survived), na.rm = TRUE)
- 
+
 
 
 
@@ -283,6 +359,14 @@ test2 <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass
                 from combined a 
                 Where [Set] = 'test'")
 
+train2_age <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass, Survived 
+                from combined_age a 
+                Where [Set] = 'train'")
+
+test2_age <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass 
+                from combined_age a 
+                Where [Set] = 'test'")
+
 
 ```
 
@@ -291,31 +375,44 @@ test2 <- sqldf("select Pclass, Sex, SibSP, Parch, Title, AgeClass
 ```{r}
 
 #Adding more cores to R/model for faster processing and leaving 1 for OS
-#cluster <- makeCluster(detectCores() - 1) 
-#registerDoParallel(cluster)
+cluster <- makeCluster(detectCores() - 1) 
+registerDoParallel(cluster)
 
+train2$Survived <- as.factor(train2$Survived)
 
+train2_age$Survived <- as.factor(train2_age$Survived)
 
-#fitControl <- trainControl(method = "cv",
-#                           number = 2,
-#                           allowParallel = TRUE)
+fitControl <- trainControl(method = "cv",
+                           number = 2,
+                           allowParallel = TRUE)
 
 
 
 #Random Forest
-#modelfit <- train(Survived ~., data = train2, method = "rf", trControl = fitControl)
 
-#modelfit$finalModel
+#Comparing imputed age vs actual age
+
+RFfitAge <- train(Survived ~., data = train2_age, method = "rf", trControl = fitControl)
+
+RFfitAge$finalModel
+
+print(RFfitAge)
+
+
+RFfit <- train(Survived ~., data = train2, method = "rf", trControl = fitControl)
+
+RFfit$finalModel
+
+print(RFfit)
+
 
 #Gradient Boosting Machine)
 
-#modFit <- train(Survived ~., method = "gbm", data=train2, verbose = FALSE)
+modFit <- train(Survived ~., method = "gbm", data=train2, verbose = FALSE)
 
-#modFit
+modFit
 
 
-#Getting Errors in the prediction of test because of values that exist in test, but not in train
-# Dona. value doesn't exist in train.  Need to combine some titles in data prep
 
 
 #pred <- predict(modelfit, newdata = test2)
