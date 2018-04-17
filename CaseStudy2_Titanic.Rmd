@@ -100,7 +100,7 @@ test_age$Set <- "test"
 ```
 
 
-#Clean the Data
+#Clean and Prep the Data
 
 ```{r}
 #We want to add the Survived variable to the test set so that we can combine training and test 
@@ -423,6 +423,14 @@ modFit
 pred <- predict(modFit, newdata = test2)
 
 pred
+
+submission <- as.data.frame(cbind(test$PassengerId, as.character(pred)))
+
+names(submission) <- c("PassengerId","Survived")
+
+
+write.csv(submission, file = "kagglescore.csv", row.names = FALSE)
+
 
 
 ```
