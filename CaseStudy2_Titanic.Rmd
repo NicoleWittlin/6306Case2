@@ -23,7 +23,7 @@ One of the reasons that the shipwreck led to such loss of life was that there we
 
 In this kaggle challenge, we must complete the analysis of what sorts of people were likely to survive. In particular, we need to apply the tools of machine learning to predict which passengers survived the tragedy.
 
-# Data Dictionary
+# Packages
 
 ```{r echo = TRUE, include = TRUE, warning = FALSE}
 
@@ -40,14 +40,20 @@ library(parallel)
 library(doParallel)
 library(randomForest)
 
+```
+
+#Data Dictionary
+
+```{r}
+
 #variables <- read.xlsx("Variables.xlsx", "Sheet1")
 variables <- read.csv("Variables.csv", sep=",")
 
 
 kable((variables), "html") %>% kable_styling(bootstrap_options="striped", full_width = F, font_size = 12)
 
-
 ```
+
 
 #Variable Notes
 
@@ -71,7 +77,6 @@ Some children travelled only with a nanny, therefore parch=0 for them.
 #Import the Data
 
 ```{r echo = TRUE, include = FALSE}
-
 
 
 ##setwd("C:/Users/i64756/Desktop/Kaggle/Titanic")
@@ -99,6 +104,43 @@ test_age$Set <- "test"
 
 ```
 
+
+#Exploratory Analysis
+
+## Women and Children First
+
+WE SHOULD BREAK UP THESE PLOTS AND SAY SOMETHING AFTER EACH ONE. 
+
+
+```{r echo = TRUE, include = TRUE}
+
+ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
+    geom_histogram(binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
+
+
+ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
+    geom_histogram(stat = "count", binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
+
+
+ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
+    geom_histogram(aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
+
+
+ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
+    geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
+
+
+ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
+    geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none") 
+
+  
+
+ 
+
+
+
+
+```
 
 #Clean and Prep the Data
 
@@ -251,6 +293,8 @@ combined <- sqldf("SELECT a.*, CASE WHEN ImputedAge is Null then NULL when Imput
 combined_age <- sqldf("SELECT a.*, CASE WHEN ImputedAge is Null then NULL when ImputedAge <= 2 then 'Infant' when ImputedAge <= 5 then 'Toddler' when ImputedAge <= 12 then 'Child' when ImputedAge <= 18 then 'Teen' when ImputedAge <= 30 then 'Adult' when ImputedAge <= 40 then 'OlderAdult' when ImputedAge <= 65 then 'OvertheHill' else 'Senior' end as 'AgeClass' from combined_age a")
 
 
+
+
 #Check to make sure that I categorized all passengers
 sapply(combined, function(x) sum(is.na(x)))
 
@@ -309,42 +353,6 @@ Maybe we can discuss what we wanted to look at first and then later further down
 
 
 
-#Exploratory Analysis
-
-## Women and Children First
-
-WE SHOULD BREAK UP THESE PLOTS AND SAY SOMETHING AFTER EACH ONE. 
-
-
-```{r echo = TRUE, include = TRUE}
-
-ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
-    geom_histogram(binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
-
-
-ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
-    geom_histogram(stat = "count", binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
-
-
-ggplot(train, aes(x=Age, group = Survived, fill = Survived)) +
-    geom_histogram(aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
-
-
-ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
-    geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none")
-
-
-ggplot(train, aes(x=Sex, group = Survived, fill = Survived)) +
-    geom_histogram(stat = "count", aes(y=(..count..)/sum(..count..)),binwidth=5, alpha=.5, position="identity")+   facet_grid(~Survived, labeller = label_both) + theme(legend.position="none") 
-
-  
-
- 
-
-
-
-
-```
 
 
 #Seperate Train and Test for Variables we want
@@ -420,7 +428,7 @@ modFit
 #Predict the test set with the best model
 #using modfit here
 
-pred <- predict(modFit, newdata = test2)
+pred <- predict(RFfit, newdata = test2)
 
 pred
 
@@ -429,7 +437,7 @@ submission <- as.data.frame(cbind(test$PassengerId, as.character(pred)))
 names(submission) <- c("PassengerId","Survived")
 
 
-write.csv(submission, file = "kagglescore.csv", row.names = FALSE)
+write.csv(submission, file = "kagglescorerf.csv", row.names = FALSE)
 
 
 
